@@ -303,6 +303,54 @@ namespace Microsoft.Coyote.Rewriting.Types.Threading.Tasks
         }
 #endif
 
+#if NET9_0_OR_GREATER
+        /// <summary>
+        /// Creates a task that will complete when all tasks in the specified span have completed.
+        /// </summary>
+        /// <remarks>C# 13 binds <c>Task.WhenAll(a, b)</c> to this overload when targeting .NET 9 or later.</remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SystemTask WhenAll(ReadOnlySpan<SystemTask> tasks)
+        {
+            SystemTask task = SystemTask.WhenAll(tasks);
+            CoyoteRuntime.Current.RegisterKnownControlledTask(task);
+            return task;
+        }
+
+        /// <summary>
+        /// Creates a task that will complete when all tasks in the specified span have completed.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SystemTasks.Task<TResult[]> WhenAll<TResult>(ReadOnlySpan<SystemTasks.Task<TResult>> tasks)
+        {
+            SystemTasks.Task<TResult[]> task = SystemTask.WhenAll(tasks);
+            CoyoteRuntime.Current.RegisterKnownControlledTask(task);
+            return task;
+        }
+
+        /// <summary>
+        /// Creates a task that will complete when any task in the specified span has completed.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SystemTasks.Task<SystemTask> WhenAny(ReadOnlySpan<SystemTask> tasks)
+        {
+            SystemTasks.Task<SystemTask> task = SystemTask.WhenAny(tasks);
+            CoyoteRuntime.Current.RegisterKnownControlledTask(task);
+            return task;
+        }
+
+        /// <summary>
+        /// Creates a task that will complete when any task in the specified span has completed.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SystemTasks.Task<SystemTasks.Task<TResult>> WhenAny<TResult>(
+            ReadOnlySpan<SystemTasks.Task<TResult>> tasks)
+        {
+            SystemTasks.Task<SystemTasks.Task<TResult>> task = SystemTask.WhenAny(tasks);
+            CoyoteRuntime.Current.RegisterKnownControlledTask(task);
+            return task;
+        }
+#endif
+
         /// <summary>
         /// Creates a task that will complete when any task in the specified array have completed.
         /// </summary>

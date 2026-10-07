@@ -347,5 +347,35 @@ namespace Microsoft.Coyote.BugFinding.Tests
             },
             configuration: this.GetConfiguration().WithTestingIterations(200));
         }
+
+#if NET9_0_OR_GREATER
+        [Fact(Timeout = 5000)]
+        public void TestWhenAnyWithReadOnlySpanOfTasks()
+        {
+            this.Test(async () =>
+            {
+                var tcs = new TaskCompletionSource<bool>();
+                Task result = await Task.WhenAny(new ReadOnlySpan<Task>(new Task[] { tcs.Task, Task.Delay(1) }));
+                Specification.Assert(result.IsCompleted, "No task has completed.");
+                tcs.SetResult(true);
+                await tcs.Task;
+            },
+            configuration: this.GetConfiguration().WithTestingIterations(200));
+        }
+
+        [Fact(Timeout = 5000)]
+        public void TestWhenAnyWithReadOnlySpanOfGenericTasks()
+        {
+            this.Test(async () =>
+            {
+                var tcs = new TaskCompletionSource<bool>();
+                Task<bool> result = await Task.WhenAny(new ReadOnlySpan<Task<bool>>(new[] { tcs.Task, Task.FromResult(true) }));
+                Specification.Assert(result.Result, "Unexpected result.");
+                tcs.SetResult(true);
+                await tcs.Task;
+            },
+            configuration: this.GetConfiguration().WithTestingIterations(200));
+        }
+#endif
     }
 }

@@ -394,5 +394,41 @@ namespace Microsoft.Coyote.BugFinding.Tests
             },
             replay: true);
         }
+
+#if NET9_0_OR_GREATER
+        [Fact(Timeout = 5000)]
+        public void TestWhenAllWithReadOnlySpanOfTasks()
+        {
+            this.TestWithError(async () =>
+            {
+                SharedEntry entry = new SharedEntry();
+                Task task1 = WriteWithDelayAsync(entry, 3);
+                Task task2 = WriteWithDelayAsync(entry, 5);
+                await Task.WhenAll(new ReadOnlySpan<Task>(new[] { task1, task2 }));
+                AssertSharedEntryValue(entry, 5);
+            },
+            configuration: this.GetConfiguration().WithTestingIterations(200),
+            expectedError: "Value is 3 instead of 5.",
+            replay: true);
+        }
+
+        [Fact(Timeout = 5000)]
+        public void TestWhenAllWithReadOnlySpanOfGenericTasks()
+        {
+            this.Test(async () =>
+            {
+                Task<int> task1 = Task.Run(async () =>
+                {
+                    await Task.Delay(1);
+                    return 3;
+                });
+
+                Task<int> task2 = Task.Run(() => 5);
+                int[] results = await Task.WhenAll(new ReadOnlySpan<Task<int>>(new[] { task1, task2 }));
+                Specification.Assert(results.Length is 2 && results[0] is 3 && results[1] is 5, "Unexpected results.");
+            },
+            configuration: this.GetConfiguration().WithTestingIterations(200));
+        }
+#endif
     }
 }
