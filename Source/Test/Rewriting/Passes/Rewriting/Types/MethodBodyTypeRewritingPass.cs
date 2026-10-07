@@ -81,8 +81,42 @@ namespace Microsoft.Coyote.Rewriting
             {
                 instruction = this.VisitCallInstruction(instruction, methodReference);
             }
+            else if (instruction.OpCode == OpCodes.Ldftn && instruction.Operand is MethodReference functionReference)
+            {
+                instruction = this.VisitLdftnInstruction(instruction, functionReference);
+            }
 
             return instruction;
+        }
+
+        /// <summary>
+        /// Rewrites the specified <see cref="OpCodes.Ldftn"/> instruction, so that delegates created from
+        /// method groups (such as <c>Func&lt;TimeSpan, CancellationToken, Task&gt; f = Task.Delay</c>)
+        /// bind to the controlled replacement.
+        /// </summary>
+        /// <remarks>
+        /// Only static methods with static replacements are rewritten, because replacements of instance
+        /// methods take the receiver as an extra parameter and would not match the delegate signature.
+        /// </remarks>
+        /// <returns>The unmodified instruction, or the newly replaced instruction.</returns>
+        private Instruction VisitLdftnInstruction(Instruction instruction, MethodReference method)
+        {
+            if (method.HasThis ||
+                !this.TryRewriteMethodReference(method, out MethodReference newMethod) ||
+                newMethod.HasThis ||
+                !this.TryResolve(newMethod, out MethodDefinition resolvedMethod) ||
+                !resolvedMethod.IsStatic ||
+                newMethod.DeclaringType.FullName == method.DeclaringType.FullName)
+            {
+                return instruction;
+            }
+
+            Instruction newInstruction = Instruction.Create(OpCodes.Ldftn, newMethod);
+            newInstruction.Offset = instruction.Offset;
+            this.LogWriter.LogDebug("............. [-] {0}", instruction);
+            this.Replace(instruction, newInstruction);
+            this.LogWriter.LogDebug("............. [+] {0}", newInstruction);
+            return newInstruction;
         }
 
         /// <summary>

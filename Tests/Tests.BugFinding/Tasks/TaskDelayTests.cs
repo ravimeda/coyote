@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Coyote.Specifications;
 using Xunit;
@@ -56,6 +57,39 @@ namespace Microsoft.Coyote.BugFinding.Tests
                 for (int i = 0; i < 2; i++)
                 {
                     tasks[i] = WriteWithLoopAndDelayAsync(entry, i, 1);
+                }
+
+                await Task.WhenAll(tasks);
+
+                Specification.Assert(entry.Value is 2, "Value is {0} instead of 2.", entry.Value);
+            },
+            configuration: this.GetConfiguration().WithTestingIterations(200),
+            expectedError: "Value is 1 instead of 2.",
+            replay: true);
+        }
+
+        private static readonly Func<TimeSpan, CancellationToken, Task> DelayDelegate = Task.Delay;
+
+        private static async Task WriteWithLoopAndDelegateDelayAsync(SharedEntry entry, int value)
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                entry.Value = value + i;
+                await DelayDelegate(TimeSpan.FromMilliseconds(1), CancellationToken.None);
+            }
+        }
+
+        [Fact(Timeout = 5000)]
+        public void TestInterleavingsInLoopWithMethodGroupDelegateDelays()
+        {
+            this.TestWithError(async () =>
+            {
+                SharedEntry entry = new SharedEntry();
+
+                Task[] tasks = new Task[2];
+                for (int i = 0; i < 2; i++)
+                {
+                    tasks[i] = WriteWithLoopAndDelegateDelayAsync(entry, i);
                 }
 
                 await Task.WhenAll(tasks);
